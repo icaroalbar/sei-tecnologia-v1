@@ -1,9 +1,12 @@
 import { APIGatewayProxyEvent } from "aws-lambda";
 import { formatJSONResponse } from "../libs/api-gateway";
 import multipart from "lambda-multipart-parser";
+// import { S3Client } from "@aws-sdk/client-s3";
 
 const handler = async (event: APIGatewayProxyEvent) => {
   const parsedEvent = await multipart.parse(event);
+
+  // const client = new S3Client(process.env.AWS_BUCKET_REGION);
 
   try {
     if (!parsedEvent.files || parsedEvent.files.length === 0) {

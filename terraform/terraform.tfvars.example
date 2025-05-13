@@ -2,6 +2,6 @@ aws_access_key =
 aws_secret_key =
 region =
 bucket_store =
-bucket_sserverless =
-# bucket_save =
+bucket_serverless =
+bucket_save =
 

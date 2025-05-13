@@ -2,7 +2,7 @@ import type { AWS } from "@serverless/typescript";
 import path from "path";
 import { extraction } from "./src";
 
-export const apiName = `sei-tecnologia-v1-build`;
+export const apiName = "sei-tecnologia-v1-build";
 
 const serverlessConfiguration: AWS = {
   service: apiName,
@@ -11,6 +11,7 @@ const serverlessConfiguration: AWS = {
   plugins: ["serverless-offline"],
   provider: {
     name: "aws",
+    region: "us-east-1",
     runtime: "nodejs20.x",
     stage: '${opt:stage, "dev"}',
     apiGateway: {
@@ -22,6 +23,8 @@ const serverlessConfiguration: AWS = {
       name: apiName,
     },
     environment: {
+      AWS_REGION_CONFIG: "${env:AWS_REGION_CONFIG}",
+      AWS_BUCKET_STORE: "${env:AWS_BUCKET_STORE}",
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1",
       NODE_OPTIONS: "--enable-source-maps --stack-trace-limit=1000",
     },
@@ -65,4 +68,4 @@ const serverlessConfiguration: AWS = {
   },
 };
 
-module.exports = serverlessConfiguration;
+export default serverlessConfiguration;

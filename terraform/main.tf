@@ -10,6 +10,6 @@ resource "aws_s3_bucket" "bucket_store" {
 }
 
 resource "aws_s3_bucket" "bucket_serverless" {
-  bucket = var.bucket_sserverless
+  bucket = var.bucket_serverless
   force_destroy = true
 }
