@@ -1,0 +1,27 @@
+{
+  "name": "sei-tecnologia-v1",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start:dev": "sls offline start --httpPort 8030 --reloadHandler"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.540.0",
+    "@aws-sdk/s3-request-presigner": "^3.741.0",
+    "@middy/core": "^6.0.0",
+    "@middy/http-cors": "^6.0.0",
+    "@middy/http-json-body-parser": "^6.0.0",
+    "lambda-multipart-parser": "^1.0.1"
+  },
+  "devDependencies": {
+    "@serverless/typescript": "^3.38.0",
+    "@types/aws-lambda": "^8.10.146",
+    "@types/node": "^22.10.2",
+    "json-schema-to-ts": "^3.1.1",
+    "serverless": "^4.4.16",
+    "serverless-offline": "^14.4.0",
+    "ts-node": "^10.9.2"
+  }
+}
