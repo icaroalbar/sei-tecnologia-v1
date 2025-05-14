@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.540.0",
+    "@aws-sdk/client-textract": "^3.808.0",
     "@aws-sdk/s3-request-presigner": "^3.741.0",
     "@middy/core": "^6.0.0",
     "@middy/http-cors": "^6.0.0",

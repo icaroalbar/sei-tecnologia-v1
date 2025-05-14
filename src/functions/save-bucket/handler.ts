@@ -1,7 +1,11 @@
 import { APIGatewayProxyEvent } from "aws-lambda";
-import { formatJSONResponse } from "../libs/api-gateway";
+import { formatJSONResponse } from "../../libs/api-gateway";
 import multipart from "lambda-multipart-parser";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  ChecksumAlgorithm,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 
 const handler = async (event: APIGatewayProxyEvent) => {
   const parsedEvent = await multipart.parse(event);
@@ -11,12 +15,13 @@ const handler = async (event: APIGatewayProxyEvent) => {
       throw new Error("Arquivo não encontrado!");
     }
 
-    const client = new S3Client(process.env.AWS_BUCKET_STORE);
+    const client = new S3Client({ region: process.env.AWS_REGION });
 
     const input = {
       Body: parsedEvent.files[0].content,
       Bucket: process.env.AWS_BUCKET_STORE,
       Key: parsedEvent.files[0].filename,
+      ChecksumAlgorithm: ChecksumAlgorithm.SHA256,
     };
 
     const command = new PutObjectCommand(input);

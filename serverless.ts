@@ -1,6 +1,6 @@
 import type { AWS } from "@serverless/typescript";
 import path from "path";
-import { extraction } from "./src";
+import { saveBucket, textract } from "./src/functions";
 
 export const apiName = "sei-tecnologia-v1-build";
 
@@ -33,14 +33,24 @@ const serverlessConfiguration: AWS = {
         statements: [
           {
             Effect: "Allow",
-            Action: ["*"],
-            Resource: ["*"],
+            Action: [
+              "s3:GetObject",
+              "s3:GetObjectVersion",
+              "s3:GetBucketLocation",
+              "s3:PutObject",
+            ],
+            Resource: ["arn:aws:s3:::${env:AWS_BUCKET_STORE}/*"],
+          },
+          {
+            Effect: "Allow",
+            Action: ["textract:AnalyzeDocument"],
+            Resource: "*",
           },
         ],
       },
     },
   },
-  functions: { extraction },
+  functions: { saveBucket, textract },
   package: { individually: true },
   custom: {
     esbuild: {
