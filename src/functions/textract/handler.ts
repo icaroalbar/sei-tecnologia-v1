@@ -3,6 +3,7 @@ import {
   GetDocumentTextDetectionCommand,
   TextractClient,
 } from "@aws-sdk/client-textract";
+import { chatWithTitanPremier } from "../aws-bedrock";
 
 const client = new TextractClient({ region: process.env.AWS_REGION });
 
@@ -41,6 +42,10 @@ const handler = async (event) => {
 
     console.log("Textos extraídos:");
     console.log(lines.join("\n"));
+
+    const chatBedrock = await chatWithTitanPremier(lines.join("\n"));
+    console.log("Resposta do Bedrock:");
+    console.log(chatBedrock);
   } else {
     throw new Error("Análise falhou");
   }
