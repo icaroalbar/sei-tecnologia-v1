@@ -11,5 +11,10 @@ resource "aws_s3_bucket" "bucket_store" {
 
 resource "aws_s3_bucket" "bucket_serverless" {
   bucket = var.bucket_serverless
-  force_destroy = true
+  force_destroy = true # Manter true apenas em desenvolvimento
+}
+
+resource "aws_s3_bucket" "bucket_results" {
+  bucket = var.bucket_results
+  force_destroy = true # Manter true apenas em desenvolvimento
 }

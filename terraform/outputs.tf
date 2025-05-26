@@ -6,6 +6,6 @@ output "bucket_serverless" {
   value = aws_s3_bucket.bucket_serverless.bucket
 }
 
-# output "bucket_save" {
-#   value = aws_s3_bucket.bucket_save.bucket
-# }
+output "bucket_results" {
+  value = aws_s3_bucket.bucket_results.bucket
+}

@@ -7,4 +7,6 @@ variable "bucket_store" {
 variable "bucket_serverless" {
   description = "Bucket que vai receber os build do Serverless Framework" 
 }
-# variable "bucket_save" {}
+variable "bucket_results" {
+  description = "Bucket que vai receber os resultados da IA" 
+}

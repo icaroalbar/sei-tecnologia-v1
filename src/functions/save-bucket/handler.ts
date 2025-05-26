@@ -7,12 +7,14 @@ import { extractionDocument } from "../../shared/extraction-document";
 const handler = async (event: APIGatewayProxyEvent) => {
   const parsedEvent = await multipart.parse(event);
 
+  const bucketName = process.env.AWS_BUCKET_STORE;
+
   try {
     if (!parsedEvent.files || parsedEvent.files.length === 0) {
       throw new Error("Arquivo não encontrado!");
     }
 
-    const documentSaved = await saveDocumentBucket(parsedEvent);
+    const documentSaved = await saveDocumentBucket(parsedEvent, bucketName);
     extractionDocument(documentSaved);
 
     return formatJSONResponse(201);

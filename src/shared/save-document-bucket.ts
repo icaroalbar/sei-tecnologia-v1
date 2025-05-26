@@ -7,14 +7,12 @@ import {
 import { randomUUID } from "node:crypto";
 
 const client = new S3Client({ region: process.env.AWS_REGION });
-const bucketName = process.env.AWS_BUCKET_STORE;
+const idDocument = randomUUID();
 
-export const saveDocumentBucket = async (event) => {
-  const idDocument = randomUUID();
-
+export const saveDocumentBucket = async (event, bucket) => {
   const input = {
     Body: event.files[0].content,
-    Bucket: bucketName,
+    Bucket: bucket,
     Key: `${idDocument}-${event.files[0].filename}`,
     ChecksumAlgorithm: ChecksumAlgorithm.SHA256,
   };
@@ -27,9 +25,9 @@ export const saveDocumentBucket = async (event) => {
   return input.Key;
 };
 
-export const deleteDocumentBucket = async (event) => {
+export const deleteDocumentBucket = async (event, bucket) => {
   const input = {
-    Bucket: bucketName,
+    Bucket: bucket,
     Key: event,
   };
 
@@ -37,4 +35,20 @@ export const deleteDocumentBucket = async (event) => {
   await client.send(command);
 
   console.log("Arquivo deletado:", input.Key);
+};
+
+export const saveResultBucket = async (resultJson, bucket) => {
+  const input = {
+    Body: JSON.stringify(resultJson),
+    Bucket: bucket,
+    Key: `${idDocument}.json`,
+    ChecksumAlgorithm: ChecksumAlgorithm.SHA256,
+  };
+
+  const command = new PutObjectCommand(input);
+  await client.send(command);
+
+  console.log("Resultado salvo:", input.Key);
+
+  return input.Key;
 };
