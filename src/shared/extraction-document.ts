@@ -3,19 +3,18 @@ import {
   GetDocumentTextDetectionCommand,
   TextractClient,
 } from "@aws-sdk/client-textract";
-import { chatWithTitanPremier } from "../aws-bedrock";
+import { chatWithTitanPremier } from "./aws-bedrock-titan";
 
 const client = new TextractClient({ region: process.env.AWS_REGION });
 
-const handler = async (event) => {
+export const extractionDocument = async (event) => {
   const bucket = process.env.AWS_BUCKET_STORE;
-  const documentName = event.Records[0].s3.object.key;
 
   const startCommand = new StartDocumentTextDetectionCommand({
     DocumentLocation: {
       S3Object: {
         Bucket: bucket,
-        Name: documentName,
+        Name: event,
       },
     },
   });
@@ -40,15 +39,11 @@ const handler = async (event) => {
       (block) => block.BlockType === "LINE"
     ).map((line) => line.Text);
 
-    console.log("Textos extraídos:");
-    console.log(lines.join("\n"));
+    // console.log("Textos extraídos:");
+    // console.log(lines.join("\n"));
 
-    const chatBedrock = await chatWithTitanPremier(lines.join("\n"));
-    console.log("Resposta do Bedrock:");
-    console.log(chatBedrock);
+    chatWithTitanPremier(lines.join("\n"));
   } else {
     throw new Error("Análise falhou");
   }
 };
-
-export const main = handler;

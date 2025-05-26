@@ -1,11 +1,8 @@
 import { APIGatewayProxyEvent } from "aws-lambda";
 import { formatJSONResponse } from "../../libs/api-gateway";
 import multipart from "lambda-multipart-parser";
-import {
-  ChecksumAlgorithm,
-  PutObjectCommand,
-  S3Client,
-} from "@aws-sdk/client-s3";
+import { saveDocumentBucket } from "../../shared/save-document-bucket";
+import { extractionDocument } from "../../shared/extraction-document";
 
 const handler = async (event: APIGatewayProxyEvent) => {
   const parsedEvent = await multipart.parse(event);
@@ -15,19 +12,8 @@ const handler = async (event: APIGatewayProxyEvent) => {
       throw new Error("Arquivo não encontrado!");
     }
 
-    const client = new S3Client({ region: process.env.AWS_REGION });
-
-    const input = {
-      Body: parsedEvent.files[0].content,
-      Bucket: process.env.AWS_BUCKET_STORE,
-      Key: parsedEvent.files[0].filename,
-      ChecksumAlgorithm: ChecksumAlgorithm.SHA256,
-    };
-
-    const command = new PutObjectCommand(input);
-    await client.send(command);
-
-    console.log("Arquivo recebido:", parsedEvent.files[0]);
+    const documentSaved = await saveDocumentBucket(parsedEvent);
+    extractionDocument(documentSaved);
 
     return formatJSONResponse(201);
   } catch (error) {
