@@ -34,8 +34,7 @@ export async function chatWithTitanPremier(prompt: string): Promise<string> {
   const decoded = new TextDecoder().decode(response.body);
   const json = JSON.parse(decoded);
 
-  console.log("Resposta do modelo:", json);
-  // A resposta costuma estar em 'outputText'
+  // console.log("Resposta do modelo:", json);
   const resposta = json;
   return resposta;
 }

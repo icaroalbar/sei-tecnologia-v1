@@ -22,7 +22,12 @@ export const saveDocumentBucket = async (event, bucket) => {
 
   console.log("Arquivo recebido:", input.Key);
 
-  return input.Key;
+  return {
+    key: input.Key,
+    id: idDocument,
+    name: event.files[0].filename,
+    status: "processando",
+  };
 };
 
 export const deleteDocumentBucket = async (event, bucket) => {

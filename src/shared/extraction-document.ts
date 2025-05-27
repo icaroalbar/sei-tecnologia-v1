@@ -15,7 +15,7 @@ export const extractionDocument = async (event) => {
     DocumentLocation: {
       S3Object: {
         Bucket: bucket,
-        Name: event,
+        Name: event.key,
       },
     },
   });
@@ -44,7 +44,7 @@ export const extractionDocument = async (event) => {
     // console.log(lines.join("\n"));
 
     const resume = await chatWithTitanPremier(lines.join("\n"));
-    await deleteDocumentBucket(event, bucket);
+    await deleteDocumentBucket(event.key, bucket);
     await saveResultBucket(resume, process.env.AWS_BUCKET_RESULT);
   } else {
     throw new Error("Análise falhou");
