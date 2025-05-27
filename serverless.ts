@@ -1,6 +1,6 @@
 import type { AWS } from "@serverless/typescript";
 import path from "path";
-import { saveBucket, textract } from "./src/functions";
+import { saveBucket, processedDocuments } from "./src/functions";
 
 export const apiName = "sei-tecnologia-v1-build";
 
@@ -50,7 +50,7 @@ const serverlessConfiguration: AWS = {
       },
     },
   },
-  functions: { saveBucket, textract },
+  functions: { saveBucket, processedDocuments },
   package: { individually: true },
   custom: {
     esbuild: {
