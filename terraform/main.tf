@@ -18,3 +18,16 @@ resource "aws_s3_bucket" "bucket_results" {
   bucket = var.bucket_results
   force_destroy = true # Manter true apenas em desenvolvimento
 }
+
+resource "aws_dynamodb_table" "table_processed_documents" {
+  name           = var.table_name
+  billing_mode   = "PAY_PER_REQUEST"
+
+  hash_key       = "id"
+
+  attribute {
+    name = "id"
+    type = "S"
+  }
+}
+

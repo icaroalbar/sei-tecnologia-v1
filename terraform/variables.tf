@@ -10,3 +10,7 @@ variable "bucket_serverless" {
 variable "bucket_results" {
   description = "Bucket que vai receber os resultados da IA" 
 }
+
+variable "table_name" {
+  description = "Tabela do DynamoDB para armazenar os status dos processos" 
+}
