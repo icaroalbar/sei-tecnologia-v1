@@ -1,4 +1,8 @@
-import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBClient,
+  PutItemCommand,
+  UpdateItemCommand,
+} from "@aws-sdk/client-dynamodb";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION });
 
@@ -31,5 +35,29 @@ export async function saveToDynamo(item: DocumentItem) {
 
   const command = new PutItemCommand(input);
 
+  await client.send(command);
+}
+
+export async function updateStatusById(
+  id: string,
+  status: "finalizado" | "processando" | "erro"
+) {
+  const TableName = process.env.AWS_TABLE_NAME;
+
+  const input = {
+    TableName,
+    Key: {
+      id: { S: id },
+    },
+    UpdateExpression: "SET #s = :status",
+    ExpressionAttributeNames: {
+      "#s": "status",
+    },
+    ExpressionAttributeValues: {
+      ":status": { S: status },
+    },
+  };
+
+  const command = new UpdateItemCommand(input);
   await client.send(command);
 }

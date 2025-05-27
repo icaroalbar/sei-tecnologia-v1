@@ -5,6 +5,7 @@ import {
 } from "@aws-sdk/client-textract";
 import { chatWithTitanPremier } from "./aws-bedrock-titan";
 import { deleteDocumentBucket, saveResultBucket } from "./save-document-bucket";
+import { updateStatusById } from "./save-to-dynamo";
 
 const client = new TextractClient({ region: process.env.AWS_REGION });
 
@@ -46,6 +47,7 @@ export const extractionDocument = async (event) => {
     const resume = await chatWithTitanPremier(lines.join("\n"));
     await deleteDocumentBucket(event.key, bucket);
     await saveResultBucket(resume, process.env.AWS_BUCKET_RESULT);
+    await updateStatusById(event.id, "finalizado");
   } else {
     throw new Error("Análise falhou");
   }

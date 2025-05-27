@@ -28,7 +28,7 @@ const handler = async (event: APIGatewayProxyEvent) => {
     return formatJSONResponse(200, json);
   } catch (error) {
     console.error(error);
-    return formatJSONResponse(500, { error: error.message });
+    return formatJSONResponse(400, { error: error.message });
   }
 };
 

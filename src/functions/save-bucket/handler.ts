@@ -23,7 +23,11 @@ const handler = async (event: APIGatewayProxyEvent) => {
     });
     extractionDocument(documentSaved);
 
-    return formatJSONResponse(201, documentSaved);
+    return formatJSONResponse(201, {
+      id: documentSaved.id,
+      name: documentSaved.name,
+      status: documentSaved.status,
+    });
   } catch (error) {
     console.error(error);
     return formatJSONResponse(400, {
