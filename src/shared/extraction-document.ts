@@ -3,9 +3,10 @@ import {
   GetDocumentTextDetectionCommand,
   TextractClient,
 } from "@aws-sdk/client-textract";
-import { chatWithTitanPremier } from "./aws-bedrock-titan";
+// import { chatWithTitanPremier } from "./aws-bedrock-titan";
 import { deleteDocumentBucket, saveResultBucket } from "./save-document-bucket";
 import { updateStatusById } from "./save-to-dynamo";
+import { extractDataWithClaudeSonnet } from "./aws-bedrock-claude-sonnet";
 
 const client = new TextractClient({ region: process.env.AWS_REGION });
 
@@ -44,7 +45,8 @@ export const extractionDocument = async (event) => {
     // console.log("Textos extraídos:");
     // console.log(lines.join("\n"));
 
-    const resume = await chatWithTitanPremier(lines.join("\n"));
+    // const resume = await chatWithTitanPremier(lines.join("\n"));
+    const resume = await extractDataWithClaudeSonnet(lines.join("\n"));
     await deleteDocumentBucket(event.key, bucket);
     await saveResultBucket(resume, process.env.AWS_BUCKET_RESULT);
     await updateStatusById(event.id, "finalizado");
