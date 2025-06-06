@@ -2,26 +2,25 @@ import { APIGatewayProxyEvent } from "aws-lambda";
 import { formatJSONResponse } from "../../libs/api-gateway";
 import multipart from "lambda-multipart-parser";
 import { saveDocumentBucket } from "../../shared/save-document-bucket";
-import { extractionDocument } from "../../shared/extraction-document";
 import { saveToDynamo } from "../../shared/save-to-dynamo";
+import { summarizeDocument } from "../../shared/summarize-document";
 
 const handler = async (event: APIGatewayProxyEvent) => {
   const parsedEvent = await multipart.parse(event);
-
   const bucketName = process.env.AWS_BUCKET_STORE;
 
-  try {
-    if (!parsedEvent.files || parsedEvent.files.length === 0) {
-      throw new Error("Arquivo não encontrado!");
-    }
+  if (!parsedEvent.files || parsedEvent.files.length === 0) {
+    throw new Error("Arquivo não encontrado!");
+  }
+  const documentSaved = await saveDocumentBucket(parsedEvent, bucketName);
 
-    const documentSaved = await saveDocumentBucket(parsedEvent, bucketName);
+  try {
     await saveToDynamo({
       id: documentSaved.id,
       name: documentSaved.name,
       status: "processando",
     });
-    extractionDocument(documentSaved);
+    summarizeDocument(documentSaved);
 
     return formatJSONResponse(201, {
       id: documentSaved.id,
