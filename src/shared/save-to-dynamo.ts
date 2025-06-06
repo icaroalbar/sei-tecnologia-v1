@@ -23,11 +23,14 @@ export async function saveToDynamo(item: DocumentItem) {
       name: {
         S: item.name,
       },
-      date: {
+      start_date: {
         S: new Date().toISOString(),
       },
       status: {
         S: item.status || "processando",
+      },
+      end_date: {
+        S: "",
       },
     },
     TableName,
@@ -49,12 +52,14 @@ export async function updateStatusById(
     Key: {
       id: { S: id },
     },
-    UpdateExpression: "SET #s = :status",
+    UpdateExpression: "SET #s = :status, #e = :end_date",
     ExpressionAttributeNames: {
       "#s": "status",
+      "#e": "end_date",
     },
     ExpressionAttributeValues: {
       ":status": { S: status },
+      ":end_date": { S: new Date().toISOString() },
     },
   };
 
