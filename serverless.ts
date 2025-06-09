@@ -4,6 +4,7 @@ import {
   saveBucket,
   processedDocuments,
   resumeDocument,
+  testStep,
 } from "./src/functions";
 
 export const apiName = "sei-tecnologia-v1-build";
@@ -12,7 +13,7 @@ const serverlessConfiguration: AWS = {
   service: apiName,
 
   frameworkVersion: "4",
-  plugins: ["serverless-offline"],
+  plugins: ["serverless-offline", "serverless-step-functions"],
   provider: {
     name: "aws",
     region: "us-east-1",
@@ -29,6 +30,12 @@ const serverlessConfiguration: AWS = {
     environment: {
       AWS_REGION_CONFIG: "${env:AWS_REGION_CONFIG}",
       AWS_BUCKET_STORE: "${env:AWS_BUCKET_STORE}",
+      AWS_BUCKET_RESULT: "${env:AWS_BUCKET_RESULT}",
+      AWS_TABLE_NAME: "${env:AWS_TABLE_NAME}",
+      AWS_STAGE_MACHINE: {
+        "Fn::Sub":
+          "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${self:service}-document-processor-${self:provider.stage}",
+      },
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1",
       NODE_OPTIONS: "--enable-source-maps --stack-trace-limit=1000",
     },
@@ -50,11 +57,37 @@ const serverlessConfiguration: AWS = {
             Action: ["textract:AnalyzeDocument"],
             Resource: "*",
           },
+          {
+            Effect: "Allow",
+            Action: ["states:StartExecution"],
+            Resource: {
+              "Fn::Sub":
+                "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${self:service}-document-processor-${self:provider.stage}",
+            },
+          },
+          {
+            Effect: "Allow",
+            Action: [
+              "dynamodb:GetItem",
+              "dynamodb:PutItem",
+              "dynamodb:UpdateItem",
+              "dynamodb:Scan",
+            ],
+            Resource: {
+              "Fn::Sub":
+                "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${env:AWS_TABLE_NAME}",
+            },
+          },
         ],
       },
     },
   },
-  functions: { saveBucket, processedDocuments, resumeDocument },
+  functions: {
+    saveBucket,
+    processedDocuments,
+    resumeDocument,
+    testStep,
+  },
   package: { individually: true },
   custom: {
     esbuild: {
@@ -78,6 +111,25 @@ const serverlessConfiguration: AWS = {
     },
     serverlessOffline: {
       host: "0.0.0.0",
+    },
+  },
+  stepFunctions: {
+    stateMachines: {
+      DocumentProcessor: {
+        name: `${apiName}-document-processor-${"${self:provider.stage}"}`,
+        definition: {
+          Comment: "Processa um documento recebido do S3",
+          StartAt: "ProcessDocumentTask",
+          States: {
+            ProcessDocumentTask: {
+              Type: "Task",
+              Resource:
+                "arn:aws:lambda:us-east-1:554479149705:function:sei-tecnologia-v1-build-dev-testStep",
+              End: true,
+            },
+          },
+        },
+      },
     },
   },
 };

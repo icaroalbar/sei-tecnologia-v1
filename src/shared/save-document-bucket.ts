@@ -6,7 +6,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { randomUUID } from "node:crypto";
 
-const client = new S3Client({ region: process.env.AWS_REGION });
+const client = new S3Client({ region: process.env.AWS_REGION_CONFIG });
 const idDocument = randomUUID();
 
 export const saveDocumentBucket = async (event, bucket) => {

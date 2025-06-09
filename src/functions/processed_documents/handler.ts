@@ -2,7 +2,7 @@ import { formatJSONResponse } from "../../libs/api-gateway";
 import { DynamoDBClient, ScanCommand } from "@aws-sdk/client-dynamodb";
 
 const handler = async () => {
-  const client = new DynamoDBClient({ region: process.env.AWS_REGION });
+  const client = new DynamoDBClient({ region: process.env.AWS_REGION_CONFIG });
 
   try {
     const command = new ScanCommand({

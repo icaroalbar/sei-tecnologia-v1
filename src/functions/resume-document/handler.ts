@@ -3,7 +3,7 @@ import { formatJSONResponse } from "../../libs/api-gateway"; // Sua função uti
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { streamToString } from "../../shared/streamToString"; // Sua função utilitária
 
-const s3 = new S3Client({ region: process.env.AWS_REGION });
+const s3 = new S3Client({ region: process.env.AWS_REGION_CONFIG });
 
 /**
  * Pega o array 'content' da resposta do Bedrock, extrai a string JSON do campo 'text',

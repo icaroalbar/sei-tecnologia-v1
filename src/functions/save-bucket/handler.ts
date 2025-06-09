@@ -3,7 +3,11 @@ import { formatJSONResponse } from "../../libs/api-gateway";
 import multipart from "lambda-multipart-parser";
 import { saveDocumentBucket } from "../../shared/save-document-bucket";
 import { saveToDynamo } from "../../shared/save-to-dynamo";
-import { summarizeDocument } from "../../shared/summarize-document";
+import {
+  SFNClient,
+  StartExecutionCommand,
+  StartExecutionInput,
+} from "@aws-sdk/client-sfn";
 
 const handler = async (event: APIGatewayProxyEvent) => {
   const parsedEvent = await multipart.parse(event);
@@ -13,6 +17,7 @@ const handler = async (event: APIGatewayProxyEvent) => {
     throw new Error("Arquivo não encontrado!");
   }
   const documentSaved = await saveDocumentBucket(parsedEvent, bucketName);
+  const sfnClient = new SFNClient({ region: process.env.AWS_REGION_CONFIG });
 
   try {
     await saveToDynamo({
@@ -20,7 +25,18 @@ const handler = async (event: APIGatewayProxyEvent) => {
       name: documentSaved.name,
       status: "processando",
     });
-    summarizeDocument(documentSaved);
+
+    const input: StartExecutionInput = {
+      stateMachineArn: process.env.AWS_STAGE_MACHINE!,
+      input: JSON.stringify({
+        id: documentSaved.id,
+        name: documentSaved.name,
+        bucket: bucketName,
+      }),
+    };
+
+    const command = new StartExecutionCommand(input);
+    await sfnClient.send(command);
 
     return formatJSONResponse(201, {
       id: documentSaved.id,
