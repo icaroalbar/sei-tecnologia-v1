@@ -1,8 +1,10 @@
 import {
-  StartDocumentTextDetectionCommand,
-  GetDocumentTextDetectionCommand,
   TextractClient,
   JobStatus,
+  StartDocumentAnalysisCommand,
+  FeatureType,
+  GetDocumentAnalysisCommand,
+  Block,
 } from "@aws-sdk/client-textract";
 
 export interface ExtractionDocumentProps {
@@ -11,6 +13,7 @@ export interface ExtractionDocumentProps {
   bucket: string;
 }
 
+// Inicialização do cliente do Textract
 const client = new TextractClient({ region: process.env.AWS_REGION_CONFIG });
 
 export const extractionDocument = async (event: ExtractionDocumentProps) => {
@@ -18,29 +21,28 @@ export const extractionDocument = async (event: ExtractionDocumentProps) => {
     `Iniciando extração de texto para event.key: ${event.key}, event.id: ${event.id}`
   );
 
+  // Validação da entrada
   if (!event.key || !event.id || !event.bucket) {
     console.error("Propriedades 'key', 'id' e 'bucket' estão ausentes.");
     throw new Error("Dados do evento incompletos.");
   }
 
+  // --- 1. INICIAR O JOB DE ANÁLISE ---
   let jobId: string | undefined;
-
   try {
-    const startCommand = new StartDocumentTextDetectionCommand({
+    const startCommand = new StartDocumentAnalysisCommand({
       DocumentLocation: {
         S3Object: {
           Bucket: event.bucket,
           Name: event.key,
         },
       },
+      FeatureTypes: [FeatureType.LAYOUT],
     });
     const startResponse = await client.send(startCommand);
     jobId = startResponse.JobId;
 
     if (!jobId) {
-      console.error(
-        "Não foi possível obter JobId do Textract após iniciar a detecção."
-      );
       throw new Error(
         "Falha ao iniciar o job do Textract: JobId não retornado."
       );
@@ -50,87 +52,120 @@ export const extractionDocument = async (event: ExtractionDocumentProps) => {
       `Erro ao iniciar o job do Textract para ${event.key}:`,
       error.message
     );
-    if (error.stack) console.error(error.stack);
     throw new Error(`Falha ao iniciar a análise do Textract: ${error.message}`);
   }
 
-  let status: JobStatus | string | undefined = JobStatus.IN_PROGRESS; // Usar JobStatus do SDK
-  let response;
+  // --- 2. POLLING PARA VERIFICAR O STATUS DO JOB ---
+  let status: JobStatus | string | undefined = JobStatus.IN_PROGRESS;
   let attempts = 0;
-  const maxAttempts = 6; // 6 tentativas * 30 segundos = 180 segundos (3 minutos)
-  const pollingIntervalMs = 30000; // 30 segundos
+  const maxAttempts = 10; // 10 tentativas * 30s = 300s (5 minutos)
+  const pollingIntervalMs = 30000;
 
   console.log(
-    `Iniciando polling para JobId ${jobId}. Máximo de ${maxAttempts} tentativas com intervalo de ${
-      pollingIntervalMs / 1000
-    }s.`
+    `Iniciando polling para JobId ${jobId}. Máximo de ${maxAttempts} tentativas.`
   );
+
+  let finalResponse;
 
   while (status === JobStatus.IN_PROGRESS && attempts < maxAttempts) {
     await new Promise((res) => setTimeout(res, pollingIntervalMs));
     attempts++;
 
     try {
-      const getCommand = new GetDocumentTextDetectionCommand({ JobId: jobId });
-      response = await client.send(getCommand);
-      status = response.JobStatus;
+      const getCommand = new GetDocumentAnalysisCommand({ JobId: jobId });
+      finalResponse = await client.send(getCommand);
+      status = finalResponse.JobStatus;
       console.log(
         `Status Textract (JobId: ${jobId}): ${status}. Tentativa: ${attempts}/${maxAttempts}`
       );
     } catch (pollingError: any) {
       console.error(
-        `Erro durante o polling do Textract para JobId ${jobId} (tentativa ${attempts}/${maxAttempts}):`,
+        `Erro durante o polling do Textract para JobId ${jobId}:`,
         pollingError.message
       );
-      // Se um erro de polling ocorrer, podemos optar por continuar tentando até maxAttempts
-      // ou falhar imediatamente. Para este exemplo, vamos continuar,
-      // mas se o erro for, por exemplo, 'InvalidJobIdException', deveríamos parar.
-      // Para uma implementação mais robusta, seria bom verificar o tipo de pollingError.
-      // Se for a última tentativa e ainda der erro, o loop vai terminar de qualquer forma.
       if (attempts >= maxAttempts) {
         throw new Error(`Erro no polling do Textract: ${pollingError.message}`);
       }
     }
   }
 
+  // Tratamento de Timeout
   if (attempts >= maxAttempts && status === JobStatus.IN_PROGRESS) {
-    const timeoutMessage = `Timeout: Job do Textract (${jobId}) não concluído após ${attempts} tentativas (${
+    const timeoutMessage = `Timeout: Job do Textract (${jobId}) não concluído após ${
       (attempts * pollingIntervalMs) / 1000
-    } segundos). Último status: ${status}.`;
+    } segundos.`;
     console.error(timeoutMessage);
-
     throw new Error(timeoutMessage);
   }
 
-  if (status === JobStatus.SUCCEEDED) {
+  // --- 3. PROCESSAR O RESULTADO FINAL (COM PAGINAÇÃO E FALLBACK) ---
+  if (status === JobStatus.SUCCEEDED && finalResponse) {
     console.log(`Job do Textract (${jobId}) concluído com sucesso!.`);
-    const lines = response.Blocks?.filter(
-      (block) => block.BlockType === "LINE"
-    ).map((line) => line.Text);
 
-    if (!lines || lines.length === 0) {
-      console.warn(
-        `Textract retornou sucesso para JobId ${jobId}, mas nenhum texto (LINE) foi extraído.`
+    // Tratamento de Paginação: busca todos os blocos
+    let allBlocks: Block[] = finalResponse.Blocks || [];
+    let nextToken = finalResponse.NextToken;
+
+    while (nextToken) {
+      console.log(
+        `Buscando página adicional de resultados para JobId ${jobId}...`
       );
-      throw new Error(
-        `Textract retornou sucesso para JobId ${jobId}, mas nenhum texto (LINE) foi extraído.`
+      const nextPageResponse = await client.send(
+        new GetDocumentAnalysisCommand({ JobId: jobId, NextToken: nextToken })
       );
+      allBlocks.push(...(nextPageResponse.Blocks || []));
+      nextToken = nextPageResponse.NextToken;
     }
 
-    const documentTextContent = lines ? lines.join("\n") : "";
-    console.log(`JobId ${jobId}: Chamando extractDataWithClaudeSonnet.`);
+    console.log(
+      `Todos os ${allBlocks.length} blocos foram extraídos de todas as páginas.`
+    );
+
+    let documentTextContent: string;
+
+    // Lógica de Fallback: tenta o melhor método (parágrafos), mas tem um plano B (linhas)
+
+    // Plano A: Tentar extrair por parágrafos para um texto mais limpo
+    const paragraphs = allBlocks
+      .filter((block) => (block.BlockType as string) === "LAYOUT_PARAGRAPH")
+      .map((p) => p.Text);
+
+    if (paragraphs && paragraphs.length > 0) {
+      console.log(
+        "Extração bem-sucedida usando o método principal (LAYOUT_PARAGRAPH)."
+      );
+      documentTextContent = paragraphs.join("\n\n"); // Junta com parágrafo duplo
+    } else {
+      // Plano B: Se não houver parágrafos, usar o fallback para extrair por linhas
+      console.warn(
+        "Nenhum bloco LAYOUT_PARAGRAPH encontrado. Usando o método de fallback (LINE)."
+      );
+
+      const lines = allBlocks
+        .filter((block) => block.BlockType === "LINE")
+        .map((line) => line.Text);
+
+      if (!lines || lines.length === 0) {
+        const errorMessage = `Textract retornou sucesso para JobId ${jobId}, mas nenhum texto (nem parágrafo, nem linha) foi extraído.`;
+
+        throw new Error(errorMessage);
+      }
+
+      documentTextContent = lines.join("\n"); // Junta com parágrafo simples
+    }
+
+    console.log(
+      `JobId ${jobId}: Conteúdo completo extraído e pronto para a próxima etapa.`
+    );
 
     return documentTextContent;
   } else {
+    // Lógica de Falha
     const finalStatusMessage =
-      response?.StatusMessage ||
-      (status === JobStatus.FAILED
-        ? "Job do Textract falhou."
-        : `Status final inesperado: ${status}.`);
+      finalResponse?.StatusMessage || `Status final inesperado: ${status}.`;
     console.error(
-      `Falha no processamento do Textract para JobId ${jobId}. Status final: ${status}. Mensagem: ${finalStatusMessage}`
+      `Falha no processamento do Textract para JobId ${jobId}. Status: ${status}. Mensagem: ${finalStatusMessage}`
     );
-
     throw new Error(
       `Job do Textract (${jobId}) não concluído com sucesso. Status: ${status}. Motivo: ${finalStatusMessage}`
     );
