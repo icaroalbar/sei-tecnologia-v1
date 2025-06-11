@@ -42,11 +42,11 @@ export const deleteDocumentBucket = async (event, bucket) => {
   console.log("Arquivo deletado:", input.Key);
 };
 
-export const saveResultBucket = async (resultJson, bucket) => {
+export const saveResultBucket = async (resultJson, bucket, name) => {
   const input = {
     Body: JSON.stringify(resultJson),
     Bucket: bucket,
-    Key: `${idDocument}.json`,
+    Key: `${name}.json`,
     ChecksumAlgorithm: ChecksumAlgorithm.SHA256,
   };
 

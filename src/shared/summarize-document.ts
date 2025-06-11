@@ -27,10 +27,14 @@ export const summarizeDocument = async (event: SummarizeDocumentProps) => {
   try {
     const resume = await extractDataWithClaudeSonnet(extractedText);
     await deleteDocumentBucket(event.key, bucket as string);
-    await saveResultBucket(resume, process.env.AWS_BUCKET_RESULT as string);
-    updateStatusById(event.id, "finalizado");
+    await saveResultBucket(
+      resume,
+      process.env.AWS_BUCKET_RESULT as string,
+      input.id
+    );
+    await updateStatusById(input.id, "finalizado");
   } catch (error) {
-    updateStatusById(event.id, "erro");
+    await updateStatusById(input.id, "erro");
     throw new Error("Erro ao processar o documento.");
   }
 };

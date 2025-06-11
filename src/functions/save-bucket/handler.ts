@@ -30,8 +30,8 @@ const handler = async (event: APIGatewayProxyEvent) => {
       stateMachineArn: process.env.AWS_STAGE_MACHINE!,
       input: JSON.stringify({
         id: documentSaved.id,
-        name: documentSaved.name,
         bucket: bucketName,
+        key: documentSaved.key,
       }),
     };
 

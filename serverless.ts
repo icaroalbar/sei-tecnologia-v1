@@ -4,7 +4,7 @@ import {
   saveBucket,
   processedDocuments,
   resumeDocument,
-  testStep,
+  extractionDocument,
 } from "./src/functions";
 
 export const apiName = "sei-tecnologia-v1-build";
@@ -45,39 +45,64 @@ const serverlessConfiguration: AWS = {
           {
             Effect: "Allow",
             Action: [
-              "s3:GetObject",
-              "s3:GetObjectVersion",
-              "s3:GetBucketLocation",
-              "s3:PutObject",
+              "*", // <-- Permissão que faltava
             ],
-            Resource: ["arn:aws:s3:::${env:AWS_BUCKET_STORE}/*"],
+            // Permissão para ambos os buckets, de origem e de resultado
+            Resource: ["*"],
           },
-          {
-            Effect: "Allow",
-            Action: ["textract:AnalyzeDocument"],
-            Resource: "*",
-          },
-          {
-            Effect: "Allow",
-            Action: ["states:StartExecution"],
-            Resource: {
-              "Fn::Sub":
-                "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${self:service}-document-processor-${self:provider.stage}",
-            },
-          },
-          {
-            Effect: "Allow",
-            Action: [
-              "dynamodb:GetItem",
-              "dynamodb:PutItem",
-              "dynamodb:UpdateItem",
-              "dynamodb:Scan",
-            ],
-            Resource: {
-              "Fn::Sub":
-                "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${env:AWS_TABLE_NAME}",
-            },
-          },
+          // --- Permissões para S3 ---
+          // {
+          //   Effect: "Allow",
+          //   Action: [
+          //     "s3:GetObject",
+          //     "s3:PutObject",
+          //     "s3:DeleteObject", // <-- Permissão que faltava
+          //   ],
+          //   // Permissão para ambos os buckets, de origem e de resultado
+          //   Resource: [
+          //     "arn:aws:s3:::${env:AWS_BUCKET_STORE}/*",
+          //     "arn:aws:s3:::${env:AWS_BUCKET_RESULT}/*",
+          //   ],
+          // },
+          // // --- Permissões para Textract (Corrigidas) ---
+          // {
+          //   Effect: "Allow",
+          //   Action: [
+          //     "textract:StartDocumentAnalysis",
+          //     "textract:GetDocumentAnalysis",
+          //   ],
+          //   Resource: "*",
+          // },
+          // // --- Permissões para Bedrock (Novas) ---
+          // {
+          //   Effect: "Allow",
+          //   Action: ["bedrock:InvokeModel"],
+          //   Resource:
+          //     "arn:aws:bedrock:${aws:region}::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0",
+          // },
+          // // --- Permissões para Step Functions ---
+          // {
+          //   Effect: "Allow",
+          //   Action: ["states:StartExecution"],
+          //   Resource: {
+          //     "Fn::Sub":
+          //       "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${self:service}-document-processor-${self:provider.stage}",
+          //   },
+          // },
+          // // --- Permissões para DynamoDB ---
+          // {
+          //   Effect: "Allow",
+          //   Action: [
+          //     "dynamodb:GetItem",
+          //     "dynamodb:PutItem",
+          //     "dynamodb:UpdateItem",
+          //     "dynamodb:Scan",
+          //   ],
+          //   Resource: {
+          //     "Fn::Sub":
+          //       "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${env:AWS_TABLE_NAME}",
+          //   },
+          // },
         ],
       },
     },
@@ -86,7 +111,7 @@ const serverlessConfiguration: AWS = {
     saveBucket,
     processedDocuments,
     resumeDocument,
-    testStep,
+    extractionDocument,
   },
   package: { individually: true },
   custom: {
@@ -118,15 +143,32 @@ const serverlessConfiguration: AWS = {
       DocumentProcessor: {
         name: `${apiName}-document-processor-${"${self:provider.stage}"}`,
         definition: {
-          Comment: "Processa um documento recebido do S3",
-          StartAt: "ProcessDocumentTask",
+          Comment: "Extrai o texto e depois exibe o resultado para debug",
+          StartAt: "ExtractionDocumentTask",
           States: {
-            ProcessDocumentTask: {
+            // --- PASSO 1: Extração de Texto ---
+            ExtractionDocumentTask: {
               Type: "Task",
+              // Usando o ARN completo que você já tinha:
               Resource:
-                "arn:aws:lambda:us-east-1:554479149705:function:sei-tecnologia-v1-build-dev-testStep",
+                "arn:aws:lambda:us-east-1:554479149705:function:sei-tecnologia-v1-build-dev-extractionDocument",
+              // O Timeout deve ser definido DENTRO da Task
+              TimeoutSeconds: 300,
+              // Em vez de terminar, aponta para o próximo passo
+              // Next: "AnalyzeDocument",
               End: true,
             },
+
+            // --- PASSO 2: Função de Debug ---
+            // AnalyzeDocument: {
+            //   Type: "Task",
+            //   // Construindo o ARN para a nova função de debug, seguindo o mesmo padrão.
+            //   // Garanta que sua função de debug se chame 'debugStep' no bloco 'functions'.
+            //   Resource: {
+            //     "Fn::Sub":
+            //       "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-analyzeDocument",
+            //   },
+            // Agora este é o fim do fluxo
           },
         },
       },
