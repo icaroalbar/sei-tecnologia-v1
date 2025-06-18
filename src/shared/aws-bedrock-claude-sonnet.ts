@@ -10,7 +10,7 @@ export async function extractDataWithClaudeSonnet(
   documentText: string
 ): Promise<any | null> {
   const structuredPrompt = `
-Você é um assistente jurídico altamente preciso, especializado em analisar documentos judiciais brasileiros e extrair informações específicas de forma estruturada. Sua principal responsabilidade é levantar os dados necessários para efetuar os cálculos para essas ações.
+Você é um assistente jurídico altamente preciso, especializado em analisar documentos judiciais brasileiros e extrair informações específicas de forma estruturada. Sua principal responsabilidade é levantar os dados necessários para efetuar os cálculos para essas ações, usar fundamentos jurídicos como exemplo: - bases de condenação; - bases da aplicação dos juros; datas; etc.
 
 O texto a seguir é de um documento judicial processado por OCR.
 
