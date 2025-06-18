@@ -6,17 +6,12 @@ import {
 
 const bedrockClient = new BedrockRuntimeClient(process.env.AWS_REGION_CONFIG);
 
-/**
- * Extrai dados estruturados de um texto de documento judicial usando o Anthropic Claude 3 Sonnet no Bedrock.
- * @param documentText O texto completo do documento judicial extraído (ex: via Textract).
- * @returns Uma Promessa que resolve para um objeto ExtractedData ou null em caso de erro.
- */
 export async function extractDataWithClaudeSonnet(
   documentText: string
 ): Promise<any | null> {
   console.log(documentText);
   const structuredPrompt = `
-Você é um assistente jurídico altamente preciso, especializado em analisar documentos judiciais brasileiros e extrair informações específicas de forma estruturada. Sua principal responsabilidade é levantar os dados necessários para efetuar os cálculos para essas ações.
+Você é um assistente jurídico altamente preciso, especializado em analisar documentos judiciais brasileiros e extrair informações específicas de forma estruturada. Sua principal responsabilidade é levantar os dados necessários para efetuar os cálculos para essas ações, usar fundamentos jurídicos como exemplo: - bases de condenação; - bases da aplicação dos juros; datas; etc.
 
 O texto a seguir é de um documento judicial processado por OCR.
 

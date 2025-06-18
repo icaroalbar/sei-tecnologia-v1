@@ -1,54 +1,12 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { formatJSONResponse } from "../../libs/api-gateway"; // Sua função utilitária (NÃO MODIFICADA)
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { streamToString } from "../../shared/streamToString"; // Sua função utilitária
+import { streamToString } from "../../shared/streamToString"; // Sua função utilitária (NÃO MODIFICADA)
 
-const s3 = new S3Client({ region: process.env.AWS_REGION });
+// O cliente S3 permanece o mesmo
+const s3 = new S3Client({ region: process.env.AWS_REGION_CONFIG });
 
-/**
- * Pega o array 'content' da resposta do Bedrock, extrai a string JSON do campo 'text',
- * faz o parse e a reformata com indentação.
- * (Esta função permanece a mesma da resposta anterior)
- */
-function parseAndFormatBedrockText(bedrockContentArray: any[]): string {
-  if (!Array.isArray(bedrockContentArray) || bedrockContentArray.length === 0) {
-    throw new Error(
-      "Array 'content' da resposta do Bedrock está vazio ou é inválido."
-    );
-  }
-  const firstElement = bedrockContentArray[0];
-  if (
-    typeof firstElement !== "object" ||
-    firstElement === null ||
-    typeof firstElement.text !== "string"
-  ) {
-    throw new Error(
-      "O primeiro elemento do array 'content' deve ser um objeto com uma propriedade 'text' do tipo string."
-    );
-  }
-  const jsonStringFromModel: string = firstElement.text.trim();
-  if (
-    !jsonStringFromModel.startsWith("{") ||
-    !jsonStringFromModel.endsWith("}")
-  ) {
-    console.warn(
-      "Alerta: A string do campo 'text' não começa com '{' ou não termina com '}'. Conteúdo:",
-      jsonStringFromModel
-    );
-  }
-  try {
-    const jsonObject = JSON.parse(jsonStringFromModel);
-    return JSON.stringify(jsonObject, null, 2);
-  } catch (error: any) {
-    console.error(
-      "Erro ao fazer parse do JSON contido no campo 'text' da resposta do Bedrock:",
-      jsonStringFromModel
-    );
-    throw new Error(
-      `O conteúdo do campo 'text' não é um JSON válido: ${error.message}`
-    );
-  }
-}
+// A função 'parseAndFormatBedrockText' foi REMOVIDA por não ser mais necessária.
 
 const handler = async (
   event: APIGatewayProxyEvent
@@ -56,9 +14,9 @@ const handler = async (
   const bucketName = process.env.AWS_BUCKET_RESULT;
   const fileId = event.pathParameters?.id;
 
+  // Validações de entrada permanecem as mesmas
   if (!bucketName) {
     console.error("Variável de ambiente AWS_BUCKET_RESULT não está definida.");
-    // Ainda usamos formatJSONResponse para erros, pois o corpo é um objeto que será stringuificado.
     return formatJSONResponse(500, {
       error: "Configuração do servidor incompleta.",
     });
@@ -72,6 +30,7 @@ const handler = async (
   const s3ObjectKey = `${fileId}.json`;
 
   try {
+    // ---- 1. Busca e Leitura do Arquivo no S3 (Lógica Inalterada) ----
     const command = new GetObjectCommand({
       Bucket: bucketName,
       Key: s3ObjectKey,
@@ -88,47 +47,44 @@ const handler = async (
     const s3DataString = await streamToString(stream);
     const bedrockFullResponse = JSON.parse(s3DataString);
 
+    // ---- 2. Extração Direta do Texto (Lógica Simplificada) ----
+    // Valida a estrutura da resposta do Bedrock
     if (
       !bedrockFullResponse ||
       !Array.isArray(bedrockFullResponse.content) ||
-      bedrockFullResponse.content.length === 0
+      bedrockFullResponse.content.length === 0 ||
+      !bedrockFullResponse.content[0].text
     ) {
       throw new Error(
-        `Estrutura do JSON do S3 ('${s3ObjectKey}') inválida ou o array 'content' está vazio ou ausente.`
+        `Estrutura do JSON do S3 ('${s3ObjectKey}') inválida ou o campo 'content[0].text' está ausente.`
       );
     }
 
-    const bedrockContentArray = bedrockFullResponse.content;
-    const nicelyFormattedJsonString =
-      parseAndFormatBedrockText(bedrockContentArray);
+    // Extrai o texto plano diretamente. Não há mais necessidade de parse aninhado.
+    const plainTextFromResult = bedrockFullResponse.content[0].text;
 
-    // **** INÍCIO DA ALTERAÇÃO PRINCIPAL ****
-    // 1. Chame formatJSONResponse com um payload placeholder (ex: null ou {})
-    //    para obter o objeto de resposta base com statusCode e headers corretos.
-    //    O 'body' gerado por esta chamada será ignorado/substituído.
-    //    Usar null é seguro, pois JSON.stringify(null) resulta na string "null".
-    const baseResponse = formatJSONResponse(200, null);
-
-    // 2. Agora, sobrescreva o 'body' do objeto 'baseResponse'
-    //    com a sua string JSON já formatada.
-    baseResponse.body = nicelyFormattedJsonString;
-
-    // 3. Retorne o objeto 'baseResponse' modificado.
-    return baseResponse;
-    // **** FIM DA ALTERAÇÃO PRINCIPAL ****
+    // ---- 3. Retorno da Resposta (Lógica Simplificada) ----
+    // Retornamos um objeto JSON bem formado contendo o texto extraído.
+    // Sua função `formatJSONResponse` cuidará de stringuificar este objeto.
+    return formatJSONResponse(200, plainTextFromResult);
   } catch (error: any) {
+    // A lógica de tratamento de erros permanece a mesma, sendo robusta o suficiente.
     console.error(`Erro ao processar o arquivo '${s3ObjectKey}' do S3:`, error);
-    const errorMessage = error.message || "Ocorreu um erro desconhecido.";
-    let statusCode = 400;
-    if (
-      error.name === "NoSuchKey" ||
-      (typeof error.message === "string" && error.message.includes("NoSuchKey"))
-    ) {
+
+    let statusCode = 500;
+    let errorMessage = "Ocorreu um erro interno ao processar sua solicitação.";
+
+    if (error.name === "NoSuchKey") {
       statusCode = 404;
-    } else if (error.message.includes("Configuração do servidor incompleta")) {
+      errorMessage = `O resultado para o ID '${fileId}' não foi encontrado.`;
+    } else if (error instanceof SyntaxError) {
       statusCode = 500;
+      errorMessage = `O arquivo '${s3ObjectKey}' não contém um JSON válido.`;
+    } else {
+      statusCode = 400; // Erro genérico de dados inválidos
+      errorMessage = error.message;
     }
-    // Para respostas de erro, o comportamento padrão de formatJSONResponse (stringuificar um objeto de erro) é aceitável.
+
     return formatJSONResponse(statusCode, { error: errorMessage });
   }
 };

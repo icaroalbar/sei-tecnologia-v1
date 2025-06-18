@@ -6,7 +6,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { randomUUID } from "node:crypto";
 
-const client = new S3Client({ region: process.env.AWS_REGION });
+const client = new S3Client({ region: process.env.AWS_REGION_CONFIG });
 const idDocument = randomUUID();
 
 export const saveDocumentBucket = async (event, bucket) => {
@@ -42,11 +42,11 @@ export const deleteDocumentBucket = async (event, bucket) => {
   console.log("Arquivo deletado:", input.Key);
 };
 
-export const saveResultBucket = async (resultJson, bucket) => {
+export const saveResultBucket = async (resultJson, bucket, name) => {
   const input = {
     Body: JSON.stringify(resultJson),
     Bucket: bucket,
-    Key: `${idDocument}.json`,
+    Key: `${name}.json`,
     ChecksumAlgorithm: ChecksumAlgorithm.SHA256,
   };
 
